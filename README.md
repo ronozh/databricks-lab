@@ -89,7 +89,7 @@ An isolated catalog for review or experiments, reading the same landing Volume:
 
 ## Tests
 
-51 dbt nodes, plus 10 governance assertions. The ones that matter are the ones that have been
+51 dbt nodes, plus 24 governance assertions. The ones that matter are the ones that have been
 **seen failing**.
 
 dbt: a truncated delivery, a NULL declared count, a delivery with no sidecar, a tampered md5, and
