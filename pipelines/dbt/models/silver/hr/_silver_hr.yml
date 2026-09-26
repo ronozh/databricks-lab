@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: silver_hr_employee
+    description: >
+      One row per employee — the current version. Materialized (D3).
+      May not join; may window, which is how the reduction is done.
+    columns:
+      - name: employee_id
+        tests: [not_null, unique]
+      - name: is_employed
+        tests: [not_null]
+      - name: dept_id
+        tests:
+          - relationships:
+              to: ref('silver_hr_department')
+              field: dept_id
+
+  - name: silver_hr_department
+    description: One row per department, current version. parent_dept_id left unresolved on purpose.
+    columns:
+      - name: dept_id
+        tests: [not_null, unique]
+      - name: dept_code
+        tests: [not_null]

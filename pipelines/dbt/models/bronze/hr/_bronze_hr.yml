@@ -1,0 +1,82 @@
+version: 2
+
+models:
+  - name: bronze_hr_employee
+    description: >
+      The nightly roster as delivered, one row per employee per snapshot date.
+      Append-only and 1:1 with the file. Duplicate employee_ids across snapshot
+      dates are correct — this is a slowly-changing source.
+    columns:
+      - name: employee_id
+        description: Stable identifier. Survives a leaver returning.
+        tests: [not_null]
+      - name: snapshot_date
+        description: The business date of the delivery this row came from.
+        tests: [not_null]
+      - name: _file_path
+        description: Full path of the file that produced this row. The watermark key.
+        tests: [not_null]
+      - name: _file_name
+        description: >
+          Basename only — `_metadata.file_name` is not a path. The watermark uses
+          _file_path, because a basename is not unique across business dates.
+        tests: [not_null]
+      - name: _file_date
+        description: Business date parsed from the delivery path.
+        tests: [not_null]
+      - name: salary_annual
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              strictly: false
+    tests:
+      # The file fingerprint must be unique per employee: two rows for one
+      # employee from ONE file would mean the watermark loaded it twice.
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [employee_id, _file_path, _file_last_modified]
+
+  - name: bronze_hr_department
+    description: The org chart as delivered. parent_dept_id is self-referencing.
+    columns:
+      - name: dept_id
+        tests: [not_null]
+      - name: snapshot_date
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [dept_id, _file_path, _file_last_modified]
+
+  - name: bronze_hr_employee_changes
+    description: >
+      The change log. event_date is when the change took effect; received_date
+      is when we were told. They differ on purpose — that lag is why the roster
+      alone cannot date a change to the day it happened.
+    columns:
+      - name: employee_id
+        tests: [not_null]
+      - name: event_date
+        tests: [not_null]
+
+  - name: bronze_hr_employee_ctrl
+    description: Delivery contract for the employee feed — declared count and md5.
+    columns:
+      - name: file_name
+        tests: [not_null, unique]
+      - name: record_count
+        tests: [not_null]
+  - name: bronze_hr_department_ctrl
+    description: Delivery contract for the department feed.
+    columns:
+      - name: file_name
+        tests: [not_null, unique]
+      - name: record_count
+        description: A NULL here silently disarms the reconciliation test.
+        tests: [not_null]
+  - name: bronze_hr_employee_changes_ctrl
+    description: Delivery contract for the change-log feed.
+    columns:
+      - name: file_name
+        tests: [not_null, unique]
+      - name: record_count
+        description: A NULL here silently disarms the reconciliation test.
+        tests: [not_null]

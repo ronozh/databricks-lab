@@ -1,0 +1,10 @@
+# Everything beginning with a dot stays LOCAL.
+# That covers .env.secret, .envrc, .venv/, .plan/, .analysis/, .jd/, .DS_Store.
+.*
+!.gitignore
+
+# Build output
+pipelines/dbt/target/
+pipelines/dbt/dbt_packages/
+pipelines/dbt/logs/
+**/__pycache__/

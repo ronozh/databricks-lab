@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: gold_hr_headcount_by_department
+    description: >
+      "How many people work in each department, and what does it cost?"
+      Counts currently-employed staff only. Departments with nobody appear with
+      zero rather than vanishing.
+    columns:
+      - name: dept_id
+        tests: [not_null, unique]
+      - name: dept_name
+        tests: [not_null]
+      - name: headcount
+        description: Current employees. A part-timer counts as one person.
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              strictly: false
+      - name: managers
+        tests: [not_null]

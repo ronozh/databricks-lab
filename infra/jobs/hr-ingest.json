@@ -1,0 +1,40 @@
+{
+  "name": "hr-ingest-on-file-arrival",
+  "description": "Runs the HR medallion whenever a file lands in the landing Volume. Ships UNPAUSED: a paused trigger would 'confirm' gotcha 11 for the wrong reason.",
+  "trigger": {
+    "pause_status": "UNPAUSED",
+    "file_arrival": {
+      "url": "/Volumes/hr/landing/drop/",
+      "min_time_between_triggers_seconds": 60,
+      "wait_after_last_change_seconds": 90
+    }
+  },
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "dbt_build",
+      "dbt_task": {
+        "project_directory": "/Workspace/Shared/databricks-lab/dbt",
+        "catalog": "hr",
+        "schema": "bronze",
+        "warehouse_id": "__WAREHOUSE_ID__",
+        "commands": [
+          "dbt deps",
+          "dbt build"
+        ]
+      },
+      "environment_key": "dbt_env"
+    }
+  ],
+  "environments": [
+    {
+      "environment_key": "dbt_env",
+      "spec": {
+        "client": "3",
+        "dependencies": [
+          "dbt-databricks>=1.10.0,<2.0.0"
+        ]
+      }
+    }
+  ]
+}

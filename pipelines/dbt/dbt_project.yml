@@ -1,0 +1,46 @@
+# =============================================================================
+# databricks-lab — dbt project (Phase 1, HR only)
+#
+#   bronze   1:1 with the delivered file, typed, provenance attached. Append-only.
+#   silver   current-version projection. MATERIALIZED (D3). May never join.
+#   gold     the answer to a business question. Named for the question.
+#
+# There is no landing model. On Databricks the landing layer is the Volume
+# itself, read with read_files() -- there is nothing to register.
+# =============================================================================
+name: 'databricks_lab'
+version: '0.1.0'
+config-version: 2
+profile: 'databricks_lab'
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths:  ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # D4: from the environment, never a literal. A review catalog deliberately
+  # reads the PRIMARY volume, so this is not derived from the target catalog.
+  landing_volume: "{{ env_var('DBX_LANDING_VOLUME', '/Volumes/hr/landing/drop') }}"
+
+models:
+  databricks_lab:
+    +file_format: delta
+    bronze:
+      +schema: bronze
+      +materialized: incremental
+      +incremental_strategy: append
+      +on_schema_change: append_new_columns
+      +tags: ['hr', 'bronze']
+    silver:
+      # D3: materialized, not ephemeral. On Delta a table is cheap, inspectable,
+      # and visible in lineage. The "silver may not join" rule is unaffected --
+      # that is a discipline about content, not about materialization.
+      +schema: silver
+      +materialized: table
+      +tags: ['hr', 'silver']
+    gold:
+      +schema: gold
+      +materialized: table
+      +tags: ['hr', 'gold']
