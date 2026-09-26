@@ -8,8 +8,8 @@ keeping the patterns and replacing the tools.
 
 ## Status
 
-**Phases 1–2 complete.** HR domain end to end, 51 dbt nodes green, and Unity Catalog governance
-enforced and proven per principal.
+**Phases 1–3 complete.** HR domain end to end, 51 dbt nodes green, Unity Catalog governance
+enforced and proven per principal, and Delta file layout measured rather than assumed.
 
 | | |
 |---|---|
@@ -18,12 +18,14 @@ enforced and proven per principal.
 | Silver | one current row per key, materialized — **may never join** |
 | Gold | named for the business question; the only layer allowed to join |
 | Governance | role grants, column masks, a row filter, PII tags, a tag-driven ABAC policy, a stewardship register |
+| Delta | layout and history measured per table; clustering decided with a number, retention's mechanism established and its measurement deferred |
 
 ## Layout
 
 ```
 infra/             delivery, SQL runner, grants, review environment, job specs
 infra/governance/  principals, grants, tags, masks, row filters, ABAC, stewardship
+infra/delta/       file-layout + history measurement, Delta design assertions
 pipelines/dbt/     the models, macros and tests
 run-dbt.sh         one entry point — sources config, runs dbt
 ```
@@ -57,6 +59,8 @@ python3 infra/deliver.py --all                         # files -> landing volume
 ./infra/governance/apply.sh                            # roles, tags, masks, filters, policies
 ./infra/governance/verify.sh                           # 24 assertions
 ./infra/governance/prove.sh                            # same query, every principal
+python3 infra/delta/measure.py                         # file layout + history per table
+./infra/delta/verify.sh                                # 8 Delta design assertions
 ```
 
 An isolated catalog for review or experiments, reading the same landing Volume:
@@ -86,11 +90,22 @@ An isolated catalog for review or experiments, reading the same landing Volume:
 - **A mask on silver is worth nothing if bronze is readable.** Bronze stays unmasked so it keeps
   time travel (a column mask disables it), so "nobody outside the steward role reads bronze" is an
   asserted invariant rather than a note.
+- **The small-file problem never reaches Delta here, and that is a finding.** The 794 small files are
+  landing CSVs; `read_files()` writes one Parquet file, and silver and gold are rewritten whole every
+  build, so they are permanently one file. `OPTIMIZE` has nothing to compact — measured, not assumed,
+  after the plan had twice asserted the opposite.
+- **Liquid clustering is not declared**, because at one file of 85 KB there is nothing to skip and
+  setting `liquid_clustered_by` also runs an `OPTIMIZE` after every build of that model. The
+  threshold at which it would pay is written down instead.
+- **Retention is a property, not a command.** Setting `delta.deletedFileRetentionDuration` blocks
+  time travel immediately, with every file still on disk. `VACUUM` only collects what the property
+  already abandoned — the opposite of the intuitive causality. Established on a throwaway table; no
+  retention policy is set on any `hr` table, and the measurement on the real pipeline is deferred.
 
 ## Tests
 
-51 dbt nodes, plus 24 governance assertions. The ones that matter are the ones that have been
-**seen failing**.
+51 dbt nodes, plus 24 governance assertions and 8 Delta design assertions. The ones that matter are
+the ones that have been **seen failing**.
 
 dbt: a truncated delivery, a NULL declared count, a delivery with no sidecar, a tampered md5, and
 an emptied gold table each fail the build.
@@ -99,3 +114,7 @@ Governance: dropping the row filter, granting an unapproved reader on bronze PII
 classification tag each fail `verify.sh`. Because a control that nobody has watched fail is
 indistinguishable from one that does nothing — masks and row filters do not raise errors, they
 quietly return less.
+
+Delta: the clustering assertion was first written against `information_schema`, where a clustered
+column is invisible, so it could not fail. Creating a clustered table proved the rewritten version
+catches it.

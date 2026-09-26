@@ -67,9 +67,13 @@ GRANT EXECUTE ON FUNCTION ${CAT}.governance.mask_email  TO `${DBX_SP_APP_ID}`;
 -- restrict could read all 16 departments' payroll totals.
 --
 -- Masking gold used to look expensive because it would cost gold's time travel. It
--- does not: the ROW FILTER already costs it
--- (ROW_LEVEL_SECURITY_FEATURE_NOT_SUPPORTED.TIME_TRAVEL). Bronze is the only
--- time-travellable layer, so the trade this was avoiding does not exist.
+-- does not: the ROW FILTER already costs it. Bronze is the only time-travellable
+-- layer, so the trade this was avoiding does not exist.
+--
+-- With both controls bound, gold now reports a THIRD error class --
+-- ROW_LEVEL_SECURITY_COLUMN_MASK_FEATURE_NOT_SUPPORTED.TIME_TRAVEL, note
+-- COLUMN_MASK singular -- so it is not a superstring of either single-protection
+-- class. Anything matching on those two strings misses this case.
 --
 -- Two functions, because a mask's parameter type must match the column EXACTLY and
 -- these differ: SUM widens to decimal(23,2), AVG to decimal(13,2).

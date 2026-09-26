@@ -50,8 +50,14 @@ Also settled: **Free Edition only** (`--profile free`; the paid workspace cannot
 proven by running something. Two of three findings in the first Phase 0 run were my own errors,
 found only by re-testing.
 
-Before claiming a phase complete: run it twice (idempotency), break it on purpose (the check must
-be seen failing), and have an independent pass review it.
+Before claiming a phase complete: run it twice (idempotency), break it on purpose, and have an
+independent pass review it.
+
+**"Seen failing" is not enough — record the command.** Every assertion's entry in `validation.md`
+carries the concrete command that turns it red, run once. Phases 2 and 3 shipped **nine** assertions
+between them that could not fail, including one whose replacement was also vacuous. They all passed,
+none raised an error, and their output looked like a working system — so reading them proved nothing.
+Only executing the negative case does.
 
 ## Secrets
 
