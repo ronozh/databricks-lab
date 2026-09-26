@@ -88,7 +88,13 @@ def measure(cat, profile, wh):
     tables, err = rows(
         "SELECT table_schema, table_name FROM "
         f"{cat}.information_schema.tables "
-        "WHERE table_schema NOT IN ('information_schema') AND table_type != 'VIEW' "
+        # NOT LIKE '%VIEW%', not != 'VIEW'. A metric view's table_type is METRIC_VIEW, so
+        # an equality test let it through -- and DESCRIBE DETAIL rejects it with
+        # EXPECT_TABLE_NOT_VIEW.NO_ALTERNATIVE, which A7 correctly reported as an
+        # unmeasurable table. Phase 4 added an object type this listing predated; A7
+        # caught it because it treats "could not measure" as a failure rather than as
+        # "not clustered". A view has no Delta files, so it belongs out of scope here.
+        "WHERE table_schema <> 'information_schema' AND table_type NOT LIKE '%VIEW%' "
         "ORDER BY table_schema, table_name", profile, wh)
     if tables is None:
         sys.exit(f"cannot list tables in {cat}: {err}")

@@ -8,3 +8,5 @@ pipelines/dbt/target/
 pipelines/dbt/dbt_packages/
 pipelines/dbt/logs/
 **/__pycache__/
+infra/semantic/.genie-space-id
+infra/semantic/.dashboard-id

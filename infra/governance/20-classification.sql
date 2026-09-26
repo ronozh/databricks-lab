@@ -44,6 +44,18 @@ ALTER TABLE ${CAT}.silver.silver_hr_department
 ALTER TABLE ${CAT}.gold.gold_hr_headcount_by_department
   SET TAGS ('contains_pii' = 'false', 'domain' = 'hr', 'layer' = 'gold');
 
+-- The Phase 4 semantic layer. A metric view is a securable like any other, so it needs
+-- classifying like any other -- and the stewardship register is what said so: it reported
+--   mv_hr_workforce | layer NULL | REVIEW: unclassified
+-- the moment Phase 4 created it. An untagged table is a register FINDING by design, which
+-- is exactly why an unclassified new object could not slip through quietly.
+--
+-- contains_pii = 'false': it exposes aggregates, and its salary measures are masked at
+-- source. It is nonetheless row-filtered per caller, because it reads silver directly --
+-- see the phase-4 gotcha on reading around a control.
+ALTER VIEW ${CAT}.gold.mv_hr_workforce
+  SET TAGS ('contains_pii' = 'false', 'domain' = 'hr', 'layer' = 'gold');
+
 -- Bronze is tagged truthfully, which means tagged as PII. It holds the same names,
 -- emails and salaries as silver and it is NOT masked -- masking it would cost the
 -- time travel that makes bronze the audit copy. Its only protection is that nobody

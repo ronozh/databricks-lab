@@ -30,7 +30,7 @@ models:
         tests: [not_null, unique]
       - name: dept_name
         tests: [not_null]
-      - name: headcount
+      - name: headcount_people
         description: Current employees. A part-timer counts as one person.
         tests:
           - not_null
@@ -39,3 +39,43 @@ models:
               strictly: false
       - name: managers
         tests: [not_null]
+
+  # ---------------------------------------------------------------------------------
+  # The semantic layer. Documented HERE, and reaching Unity Catalog because
+  # `persist_docs` is enabled in dbt_project.yml -- without it these descriptions never
+  # leave dbt, which is how the first version of Phase 4 claimed "certified metadata"
+  # while every comment in UC was NULL.
+  #
+  # Phase 7 generates its DataHub glossary from these descriptions, now that the CDE
+  # register is deferred (99.6b). So this is a prerequisite, not decoration.
+  - name: mv_hr_workforce
+    description: >
+      The governed semantic layer for the workforce. Holds THREE competing definitions
+      of headcount side by side, each named for its rule, because all three are correct
+      and they disagree — a bare `headcount` would be this pipeline deciding on the
+      business's behalf which one is authoritative. Consumers call measure(); Genie and
+      the AI/BI dashboard both read it, so they cannot compute the same word two ways.
+      Row-filtered per caller and salary-masked, inherited from silver and re-expressed
+      in the view's own filter — see phase-4 gotcha #1.
+    columns:
+      - name: headcount_people
+        description: >
+          Currently-employed people, one row per person. A part-timer counts as one.
+          478 at the time of writing.
+      - name: headcount_fte
+        description: >
+          FTE-weighted headcount: full-time counts 1, everything else 0.5. THERE IS NO
+          FTE COLUMN IN THE DATA, so this weighting *is* the definition — which is why
+          it needs a business owner rather than whoever wrote this file. 447.0 at the
+          time of writing.
+      - name: headcount_fulltime
+        description: Employees whose employment_type is full_time only. 416 at the time of writing.
+      - name: manager_count
+        description: Currently-employed people flagged is_people_manager (job grade L5+).
+      - name: salary_total
+        description: >
+          Restricted. Sum of annual gross salary, unweighted by employment_type.
+          Returns NULL outside hr_stewards/hr_platform — a permission outcome, not
+          missing data. Masked at source in 30-masks.sql.
+      - name: salary_avg
+        description: Restricted, as salary_total. Mean annual gross across visible rows.

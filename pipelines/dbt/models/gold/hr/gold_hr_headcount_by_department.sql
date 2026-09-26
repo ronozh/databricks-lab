@@ -11,7 +11,13 @@
         answer; an inner join would hide it.
       * Salary is annual gross, unweighted by employment_type. A part-timer
         counts as one person. Finance would disagree -- and that disagreement
-        is exactly the conformance problem Phase 8 exists to solve.
+        is exactly the conformance problem Phase 6 exists to solve.
+      * The count column is `headcount_people`, NOT `headcount`. A bare name would
+        be this model deciding, on the business's behalf, which of three correct
+        definitions is THE headcount -- see gold.mv_hr_workforce, which holds all
+        three. It was called `headcount` until independent review pointed out that
+        Phase 4 asserts never to do this while the assertion only looked at the
+        metric view, one object away.
 #}
 WITH staff AS (
     SELECT dept_id, employee_id, salary_annual, is_people_manager, employment_type
@@ -21,7 +27,7 @@ WITH staff AS (
 by_dept AS (
     SELECT
         dept_id,
-        COUNT(*)                                                     AS headcount,
+        COUNT(*)                                                     AS headcount_people,
         SUM(CASE WHEN is_people_manager THEN 1 ELSE 0 END)           AS managers,
         SUM(CASE WHEN employment_type = 'full_time' THEN 1 ELSE 0 END) AS full_time,
         ROUND(SUM(salary_annual), 2)                                 AS total_salary,
@@ -35,7 +41,7 @@ SELECT
     d.dept_name,
     d.cost_centre,
     d.is_active                             AS department_active,
-    COALESCE(b.headcount, 0)                AS headcount,
+    COALESCE(b.headcount_people, 0)         AS headcount_people,
     COALESCE(b.managers, 0)                 AS managers,
     COALESCE(b.full_time, 0)                AS full_time,
     COALESCE(b.total_salary, 0)             AS total_salary,

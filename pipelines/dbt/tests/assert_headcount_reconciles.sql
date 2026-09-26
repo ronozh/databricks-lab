@@ -13,11 +13,11 @@ WITH expected AS (
     SELECT COUNT(*) AS n FROM {{ ref('silver_hr_employee') }} WHERE is_employed
 ),
 actual AS (
-    SELECT SUM(headcount) AS n, COUNT(*) AS rows_in_gold
+    SELECT SUM(headcount_people) AS n, COUNT(*) AS rows_in_gold
     FROM {{ ref('gold_hr_headcount_by_department') }}
 )
 SELECT e.n AS expected, a.n AS actual, a.rows_in_gold
 FROM expected e CROSS JOIN actual a
-WHERE a.n IS NULL            -- gold empty, or headcount all NULL
+WHERE a.n IS NULL            -- gold empty, or headcount_people all NULL
    OR a.rows_in_gold = 0
    OR e.n <> a.n

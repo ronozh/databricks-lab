@@ -27,6 +27,13 @@ vars:
 models:
   databricks_lab:
     +file_format: delta
+    # Without this, every `description:` in a schema yml stays inside dbt and every
+    # column comment in Unity Catalog is NULL. Phase 4 claimed "certified metadata"
+    # while that was the case; independent review found it. Phase 7's DataHub glossary
+    # is generated from these comments, so they have to reach the metastore.
+    +persist_docs:
+      relation: true
+      columns: true
     bronze:
       +schema: bronze
       +materialized: incremental
