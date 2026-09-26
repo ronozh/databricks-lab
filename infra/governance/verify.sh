@@ -123,10 +123,15 @@ check "bronze is directly unreadable by hr-analyst" \
 #    Volume holds the same PII as plain CSV. local-lab's governance.md R5 --
 #    "any claim about protecting a column is only as strong as the answer to
 #    'who can read landing/'".
-check "landing volume unreadable by hr-analyst" \
-  "$( denied "SELECT count(*) FROM read_files('/Volumes/${CAT}/landing/drop', format => 'csv')" --as hr-analyst && echo yes || echo no )" "yes"
+# There is exactly ONE landing zone, and it belongs to the primary catalog -- a review
+# catalog reads the same Volume rather than getting a copy. So this is deliberately NOT
+# parameterised by ${CAT}: doing that made both assertions fail against hr_review with
+# SCHEMA_NOT_FOUND, which is a broken assertion, not a finding.
+LANDING="${DBX_LANDING_VOLUME:-/Volumes/${DBX_CATALOG}/landing/drop}"
+check "landing volume (${LANDING}) unreadable by hr-analyst" \
+  "$( denied "SELECT count(*) FROM read_files('${LANDING}', format => 'csv')" --as hr-analyst && echo yes || echo no )" "yes"
 check "landing volume unreadable by biz-analyst" \
-  "$( denied "LIST '/Volumes/${CAT}/landing/drop'" --as biz-analyst && echo yes || echo no )" "yes"
+  "$( denied "LIST '${LANDING}'" --as biz-analyst && echo yes || echo no )" "yes"
 
 # 10. No grant outlives its principal. A deleted service principal left SELECT and
 #     USE SCHEMA on gold behind -- REVOKE is per-securable and does not cascade from
