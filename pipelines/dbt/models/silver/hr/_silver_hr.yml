@@ -6,6 +6,21 @@ models:
       One row per employee — the current version. Materialized (D3).
       May not join; may window, which is how the reduction is done.
     columns:
+      # NO column_mask config here, deliberately -- and this is the opposite of the
+      # gold row filter, which MUST be in config. dbt-databricks 1.12.5 is asymmetric:
+      #   row filter   -> reconciled on every run; absent from config means DROP IT
+      #   column mask  -> never applied by the `table` materialization at all
+      # `apply_column_masks` is only reachable from the alter path (materialized view,
+      # streaming table), not from the CREATE OR REPLACE a table model issues.
+      # Measured both spellings -- `column_mask:` on the column and nested under
+      # `config:` -- and both were inert. See gotcha.md #15.
+      #
+      # So the masks are bound by ALTER in infra/governance/30-masks.sql, and they
+      # SURVIVE CREATE OR REPLACE TABLE (measured), which is what makes that stable.
+      - name: salary_annual
+        description: Annual gross. Masked to NULL outside hr_stewards — see 30-masks.sql.
+      - name: email
+        description: Redacted to ***@domain outside hr_stewards — see 30-masks.sql.
       - name: employee_id
         tests: [not_null, unique]
       - name: is_employed

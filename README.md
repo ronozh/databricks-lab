@@ -8,7 +8,8 @@ keeping the patterns and replacing the tools.
 
 ## Status
 
-**Phase 1 complete.** HR domain, end to end, 51 dbt nodes green.
+**Phases 1–2 complete.** HR domain end to end, 51 dbt nodes green, and Unity Catalog governance
+enforced and proven per principal.
 
 | | |
 |---|---|
@@ -16,13 +17,15 @@ keeping the patterns and replacing the tools.
 | Bronze | 1:1 with the file, typed, five provenance columns, file-fingerprint watermark |
 | Silver | one current row per key, materialized — **may never join** |
 | Gold | named for the business question; the only layer allowed to join |
+| Governance | role grants, column masks, a row filter, PII tags, a tag-driven ABAC policy, a stewardship register |
 
 ## Layout
 
 ```
-infra/          delivery, SQL runner, grants, review environment, job specs
-pipelines/dbt/  the models, macros and tests
-run-dbt.sh      one entry point — sources config, runs dbt
+infra/             delivery, SQL runner, grants, review environment, job specs
+infra/governance/  principals, grants, tags, masks, row filters, ABAC, stewardship
+pipelines/dbt/     the models, macros and tests
+run-dbt.sh         one entry point — sources config, runs dbt
 ```
 
 Planning, analysis and phase write-ups live outside this repo, in local-only `.` directories.
@@ -48,9 +51,12 @@ export DBX_CLIENT_SECRET=...
 
 ```bash
 python3 infra/dbsql.py --file infra/sql/00-setup.sql   # catalog, schemas, volume
-./infra/grants.sh                                      # principals
+./infra/grants.sh                                      # the pipeline principal
 python3 infra/deliver.py --all                         # files -> landing volume
 ./run-dbt.sh build                                     # bronze -> silver -> gold
+./infra/governance/apply.sh                            # roles, tags, masks, filters, policies
+./infra/governance/verify.sh                           # 24 assertions
+./infra/governance/prove.sh                            # same query, every principal
 ```
 
 An isolated catalog for review or experiments, reading the same landing Volume:
@@ -70,9 +76,26 @@ An isolated catalog for review or experiments, reading the same landing Volume:
   `rescuedDataColumn` and a header check guard against upstream drift.
 - **The `.ctrl` sidecar is the delivery contract**: declared row count *and* md5 are both
   verified, and file presence is asserted against the Volume listing.
+- **Governance is split by lifecycle, not by tool.** Mask and filter *functions*, grants, tags and
+  the access map live in `infra/governance/`; the mask and row-filter *bindings* live in dbt model
+  config — because `dbt-databricks` reconciles them on every run and drops any binding it did not
+  configure. A control applied out of band survives exactly until the next green build.
+- **Masks and row filters apply to the table's owner, the pipeline included.** Left unexempted, the
+  pipeline read `NULL` for every salary and wrote `total_salary = 0.00` into gold while dbt reported
+  `PASS=1`. Nothing errored.
+- **A mask on silver is worth nothing if bronze is readable.** Bronze stays unmasked so it keeps
+  time travel (a column mask disables it), so "nobody outside the steward role reads bronze" is an
+  asserted invariant rather than a note.
 
 ## Tests
 
-51 nodes. The ones that matter are the ones that have been **seen failing**: a truncated
-delivery, a NULL declared count, a delivery with no sidecar, a tampered md5, and an emptied gold
-table each fail the build.
+51 dbt nodes, plus 10 governance assertions. The ones that matter are the ones that have been
+**seen failing**.
+
+dbt: a truncated delivery, a NULL declared count, a delivery with no sidecar, a tampered md5, and
+an emptied gold table each fail the build.
+
+Governance: dropping the row filter, granting an unapproved reader on bronze PII, and removing a
+classification tag each fail `verify.sh`. Because a control that nobody has watched fail is
+indistinguishable from one that does nothing — masks and row filters do not raise errors, they
+quietly return less.

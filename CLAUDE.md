@@ -26,8 +26,8 @@ Set in Phase 1 after the Phase 0 probe. See `.plan/README.md`.
 
 | # | Decision |
 |---|---|
-| **D1** | **dbt only** until Phase 8. No PySpark |
-| **D2** | **HR only** until Phase 3 |
+| **D1** | **dbt only** until Phase 6. No PySpark |
+| **D2** | **HR only** until Phase 8 |
 | **D3** | **Silver is materialized.** The *"silver may not join"* rule still holds — that is a discipline about content, not materialization |
 | **D4** | Workspace, catalog, warehouse and principal IDs are **variables**, never literals |
 

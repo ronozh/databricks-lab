@@ -11,7 +11,7 @@
         answer; an inner join would hide it.
       * Salary is annual gross, unweighted by employment_type. A part-timer
         counts as one person. Finance would disagree -- and that disagreement
-        is exactly the conformance problem Phase 3 exists to solve.
+        is exactly the conformance problem Phase 8 exists to solve.
 #}
 WITH staff AS (
     SELECT dept_id, employee_id, salary_annual, is_people_manager, employment_type

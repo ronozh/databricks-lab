@@ -6,7 +6,26 @@ models:
       "How many people work in each department, and what does it cost?"
       Counts currently-employed staff only. Departments with nobody appear with
       zero rather than vanishing.
+    config:
+      # The row filter is declared HERE, not applied by a stray ALTER, because
+      # dbt-databricks OWNS this property: on every run it compares the table
+      # against this config and issues `ALTER TABLE ... DROP ROW FILTER` when the
+      # config is absent. A filter bound out of band survives exactly until the
+      # next `dbt run`, which reports PASS while quietly removing it.
+      # Measured: gotcha.md #7.
+      # target.database, never a literal catalog (D4). Hardcoded as `hr.…`, applying
+      # governance to a review catalog granted analysts access to an UNMASKED copy of
+      # the same PII -- the grants followed the catalog, the protection did not.
+      row_filter:
+        function: "{{ target.database }}.governance.filter_dept"
+        columns: [dept_id]
     columns:
+      # Masked by ALTER in 30-masks.sql, not here: dbt applies row filters but never
+      # column masks (see the note in ../../silver/hr/_silver_hr.yml).
+      - name: total_salary
+        description: Restricted. Masked outside hr_stewards — see 30-masks.sql.
+      - name: avg_salary
+        description: Restricted. Masked outside hr_stewards — see 30-masks.sql.
       - name: dept_id
         tests: [not_null, unique]
       - name: dept_name

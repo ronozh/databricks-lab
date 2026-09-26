@@ -1,6 +1,6 @@
 {#
     The org chart, as delivered. parent_dept_id points at another row of this
-    same table -- the hierarchy Phase 8 and the gold layer both rely on.
+    same table -- the hierarchy Phase 6 and the gold layer both rely on.
 #}
 WITH src AS (
     SELECT *, {{ provenance_columns() }}
